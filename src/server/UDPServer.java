@@ -17,7 +17,6 @@ class UDPServer {
 
 	public static void main(String args[]) throws Exception {
 
-		String fileName = "";
 		String destIP = "";
 		int destPort = 0;
 		String nickname = "";
@@ -26,8 +25,8 @@ class UDPServer {
 		LinkedList<String> queue = new LinkedList<>();
 
 		// Nome de arquivo passado por parametro?
-		fileName = args.length > 0 ? args[0] : "config.txt";
-		RCV_PORT = args.length > 1 ? Integer.parseInt(args[1]) : 6000;
+		String fileName = args.length > 0 ? args[0] : "config.txt";
+		RCV_PORT = args.length > 1 ? Integer.parseInt(args[1]) : RCV_PORT;
 
 		// Le o arquivo de configuracao
 		try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
@@ -54,37 +53,40 @@ class UDPServer {
 		// Espera por pacotes
 		while (true) {
 
-			/* ****************************************************
+			/*
 			 * SE POSSUI O TOKEN ENVIA MENSAGEM / ARQUIVO / TOKEN
-			 **************************************************** */
+			 */
 			if (token) {
+
+				// Buffer
+				byte[] sendData = new byte[BUFF_SIZE];
+
 				// Se ha dados a enviar
 				if (!queue.isEmpty()) {
-
+					sentence = queue.pollFirst();
+					sendData = sentence.getBytes();
 				}
 				// senao envia o token
 				else {
 					sentence = TOKEN;
-					byte[] sendData = new byte[BUFF_SIZE];
 					sendData = sentence.getBytes();
-
-					// cria pacote com o dado, o endereco do server e porta do servidor
-					DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length,
-							InetAddress.getByName(destIP), destPort);
-
-					// envia o pacote
-					serverSocket.send(sendPacket);
 
 					// Nao possui mais o token
 					token = false;
 				}
+
+				// cria pacote com o dado, o endereco do server e porta do servidor
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getByName(destIP),
+						destPort);
+
+				// envia o pacote
+				serverSocket.send(sendPacket);
 			}
 
-			/* ****************************************************
+			/*
 			 * AGUARDA RECEBIMENTO DE MENSAGEM / ARQUIVO
-			 **************************************************** */
+			 */
 			byte[] receiveData = new byte[BUFF_SIZE];
-			String dest = "";
 
 			// declara o pacote a ser recebido
 			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
@@ -100,71 +102,33 @@ class UDPServer {
 			InetAddress IPAddress = receivePacket.getAddress();
 			int port = receivePacket.getPort();
 
-			// Mensagem de texto da aplicacao cliente
-			if (packetMsg.startsWith("text ")) {
+			// Mensagem de dados recebida
+			if (packetMsg.startsWith(DADOS)) {
 
-				int i = 0;
-				dest = "";
+				System.out.println("\nMensagem recebida:\n" + packetMsg + "\n");
+				
+				String[] dados = packetMsg.substring(5).split(":");
+				String controleErro = dados[0];
+				String origem = dados[1];
+				String destino = dados[2];
+				String tipoDado = dados[3];
+				String mensagem = "";
 
-				for (i = 5; i < packetMsg.length() && packetMsg.charAt(i) != ' '; i++) {
-					dest += packetMsg.charAt(i);
+				for (int i = 4; i < dados.length; i++) {
+					mensagem += dados[i];
 				}
 
-				// Destinatatrio eh o proprio servidor, apenas imprime na tela
-				if (dest.equals(nickname)) {
-					System.out.println(packetMsg.substring(++i));
+				// Se eh o destinatario, mostra dados na tela
+				if (destino.equals(nickname)) {
+					System.out.println("\nMensagem recebida de: " + origem);
+					System.out.println("IP: " + IPAddress + ":" + port);
+					System.out.println("Mensagem recebida: " + mensagem);
+					System.out.println("\n");
 				}
-				// Destinatario nao eh local
+				// Senao coloca pacote na fila
 				else {
-					// Monta a mensagem para enviar
-					sentence = DADOS + ";naocopiado:" + nickname + ":" + dest + ":M:" + packetMsg.substring(++i);
-
-					// Se possui o token, envia a mensagem
-					if (token) {
-
-						byte[] sendData = new byte[BUFF_SIZE];
-						sendData = sentence.getBytes();
-
-						// cria pacote com o dado, o endereco do server e porta do servidor
-						DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length,
-								InetAddress.getByName(destIP), destPort);
-
-						// envia o pacote
-						serverSocket.send(sendPacket);
-					}
-					// Senao coloca mensagem na fila
-					else {
-						// Descarta mensagem se a fila esta cheia
-						if (queue.size() >= 10) {
-							System.out.println("Fila cheia. Mensagem descartada!");
-						}
-						// Senao coloca a mensagem no final da fila
-						else {
-							queue.add(sentence);
-						}
-
-					}
-
+					queue.add(packetMsg);
 				}
-
-			}
-			// Arquivo da aplicacao cliente
-			else if (packetMsg.startsWith("file ")) {
-				int i = 0;
-				dest = "";
-
-				for (i = 5; i < packetMsg.length() && packetMsg.charAt(i) != ' '; i++) {
-					dest += packetMsg.charAt(i);
-				}
-
-				sentence = DADOS + ";naocopiado:" + nickname + ":" + dest + ":A:" + packetMsg.substring(++i);
-			}
-			// Mensagem de dados vinda de outro servidor
-			else if (packetMsg.startsWith(DADOS)) {
-
-				// Mostra dados na tela
-				System.out.println("IP: " + IPAddress + ":" + port);
-				System.out.println("Mensagem recebida: " + sentence);
 
 			}
 			// TOKEN recebido
