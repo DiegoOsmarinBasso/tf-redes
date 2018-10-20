@@ -2,7 +2,6 @@ package client;
 
 // classes para input e output streams e
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.InputStreamReader;
 // DatagramaSocket,InetAddress,DatagramaPacket
 import java.net.DatagramPacket;
@@ -11,7 +10,7 @@ import java.net.InetAddress;
 
 class UDPClient {
 
-	private static final String DADOS = "2345";
+	private static final String DATA = "2345";
 	private static String NICKNAME = "Alice";
 	private static int SND_PORT = 6000;
 	private static final int BUFF_SIZE = 1024;
@@ -32,9 +31,9 @@ class UDPClient {
 		InetAddress IPAddress = InetAddress.getByName("localhost");
 
 		while (true) {
-			System.out.println("\nPara enviar um arquivo digite \"file \" seguido do nome do destinatário e do nome do arquivo");
+			System.out.println("\n\nPara enviar um arquivo digite \"file \" seguido do nome do destinatário e do nome do arquivo");
 			System.out.println("Para enviar uma mensagem digite \"text \" seguido do nome do destinatário e da mensagem");
-			System.out.println("Para sair digite \"exit\"");
+			System.out.println("Para sair digite \"exit\"\n");
 
 			// uma linha do teclado
 			String sentence = inFromUser.readLine();
@@ -42,17 +41,17 @@ class UDPClient {
 			// Mensagem
 			if (sentence.startsWith("text ")) {
 
-				String[] data = sentence.substring(5).split(" ", 2);
+				String[] entry = sentence.substring(5).split(" ", 2);
 
-				if (data.length < 2) {
+				if (entry.length < 2) {
 					System.out.println("\nEntrada inválida!");
 					continue;
 				}
 
-				String destination = data[0];
-				String message = data[1];
+				String destination = entry[0];
+				String message = entry[1];
 
-				sentence = DADOS + ";naocopiado:" + NICKNAME + ":" + destination + ":M:" + message;
+				sentence = DATA + ";nãocopiado:" + NICKNAME + ":" + destination + ":M:" + message;
 
 				for (int i = 0; i < sentence.length(); i = i + BUFF_SIZE) {
 					byte[] sendData = new byte[BUFF_SIZE];
