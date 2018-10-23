@@ -2,6 +2,7 @@ package client;
 
 // classes para input e output streams e
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.InputStreamReader;
 // DatagramaSocket,InetAddress,DatagramaPacket
 import java.net.DatagramPacket;
@@ -31,8 +32,10 @@ class UDPClient {
 		InetAddress IPAddress = InetAddress.getByName("localhost");
 
 		while (true) {
-			System.out.println("\n\nPara enviar um arquivo digite \"file \" seguido do nome do destinatário e do nome do arquivo");
-			System.out.println("Para enviar uma mensagem digite \"text \" seguido do nome do destinatário e da mensagem");
+			System.out.println(
+					"\n\nPara enviar um arquivo digite \"file \" seguido do nome do destinatario e do nome do arquivo");
+			System.out
+					.println("Para enviar uma mensagem digite \"text \" seguido do nome do destinatario e da mensagem");
 			System.out.println("Para sair digite \"exit\"\n");
 
 			// uma linha do teclado
@@ -44,14 +47,14 @@ class UDPClient {
 				String[] entry = sentence.substring(5).split(" ", 2);
 
 				if (entry.length < 2) {
-					System.out.println("\nEntrada inválida!");
+					System.out.println("\nEntrada invalida!");
 					continue;
 				}
 
 				String destination = entry[0];
 				String message = entry[1];
 
-				sentence = DATA + ";nãocopiado:" + NICKNAME + ":" + destination + ":M:" + message;
+				sentence = DATA + ";naocopiado:" + NICKNAME + ":" + destination + ":M:" + message;
 
 				for (int i = 0; i < sentence.length(); i = i + BUFF_SIZE) {
 					byte[] sendData = new byte[BUFF_SIZE];
@@ -70,7 +73,7 @@ class UDPClient {
 
 					// envia o pacote
 					clientSocket.send(sendPacket);
-					
+
 					// avisa o usuario
 					System.out.println("\nMensagem enviada ao servidor:");
 					System.out.println(sentence);
@@ -79,33 +82,45 @@ class UDPClient {
 			// Arquivo
 			else if (sentence.startsWith("file ")) {
 
-				for (int i = 0; i < sentence.length(); i = i + BUFF_SIZE) {
-					byte[] sendData = new byte[BUFF_SIZE];
+				String[] entry = sentence.split(" ");
+				String destination = "";
+				String file = "";
+				String fileContent = "";
 
-					// Se tamanho restante maior que 1024, envia os primeiros 1024 caracteres
-					if (sentence.length() > i + BUFF_SIZE) {
-						sendData = sentence.substring(i, i + BUFF_SIZE).getBytes();
-					}
-					// Senao envia todo restante da mensagem
-					else {
-						sendData = sentence.substring(i, sentence.length()).getBytes();
-					}
-
-					// cria pacote com o dado, o endereco do server e porta do servidor
-					DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, SND_PORT);
-
-					// envia o pacote
-					clientSocket.send(sendPacket);
+				if (entry.length != 3) {
+					System.out.println("\nEntrada invalida!");
+					continue;
+				} else {
+					destination = entry[1];
+					file = System.getProperty("user.dir") + "/" + entry[2];
 				}
+
+				try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+
+					while (br.ready()) {
+						fileContent += br.readLine();
+					}
+				} catch (Exception e) {
+					System.out.println("Arquivo de entrada invalido!");
+				}
+
+				sentence = DATA + ";naocopiado:" + NICKNAME + ":" + destination + ":A:" + fileContent;
+
+				byte[] sendData = sentence.getBytes();
+
+				// cria pacote com o dado, o endereco do server e porta do servidor
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, SND_PORT);
+
+				// envia o pacote
+				clientSocket.send(sendPacket);
 			}
 			// Sair
 			else if ("exit".equals(sentence)) {
-				clientSocket.send(new DatagramPacket("exit".getBytes(), 4, IPAddress, SND_PORT));
 				break;
 			}
 			// Erro
 			else {
-				System.out.println("\nEntrada inválida!");
+				System.out.println("\nEntrada invalida!");
 			}
 		}
 		// fecha o cliente

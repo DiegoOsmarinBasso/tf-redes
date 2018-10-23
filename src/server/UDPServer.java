@@ -14,7 +14,7 @@ class UDPServer {
 	private static final String DATA = "2345";
 	private static final int BUFF_SIZE = 1024;
 	private static final int PERCENT_ERR = 0;
-	private static final String NAO_COPIADO = "nãocopiado";
+	private static final String NAO_COPIADO = "naocopiado";
 	private static final String ERRO = "erro";
 	private static final String OK = "OK";
 	private static final String TODOS = "TODOS";
@@ -52,7 +52,7 @@ class UDPServer {
 
 		} catch (Exception e) {
 
-			System.out.println("Arquivo de configuração inválido!");
+			System.out.println("Arquivo de configuracao invalido!");
 			System.exit(0);
 
 		}
@@ -159,7 +159,7 @@ class UDPServer {
 						}
 						// NAO_COPIADO
 						else if (NAO_COPIADO.equals(controleErro)) {
-							System.out.println("\nDestinatário não encontrado!");
+							System.out.println("\nDestinatario nao encontrado!");
 							primeiroErro = true;
 							if (!queue.isEmpty())
 								queue.removeFirst();
@@ -169,12 +169,12 @@ class UDPServer {
 							// Se eh o primeiro erro, nao remove mensagem da fila
 							if (primeiroErro) {
 								System.out.println(
-										"Ocorreu um erro, a mesagem será reenviada na próxima passagem do token!");
+										"Ocorreu um erro, a mesagem sera reenviada na proxima passagem do token!");
 								primeiroErro = false;
 							}
 							// Senao, remove mensagem da fila para nao ser enviada novamente
 							else {
-								System.out.println("Ocorreu novamente um erro, a mesagem será descartada!");
+								System.out.println("Ocorreu novamente um erro, a mesagem sera descartada!");
 								primeiroErro = true;
 								if (!queue.isEmpty())
 									queue.removeFirst();
