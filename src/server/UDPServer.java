@@ -1,10 +1,13 @@
 package server;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -12,8 +15,8 @@ class UDPServer {
 
 	private static final String TOKEN = "1234";
 	private static final String DATA = "2345";
-	private static final int BUFF_SIZE = 1024;
-	private static final int PERCENT_ERR = 0;
+	private static final int BUFF_SIZE = 65536;
+	private static final int PERCENT_ERR = 10;
 	private static final String NAO_COPIADO = "naocopiado";
 	private static final String ERRO = "erro";
 	private static final String OK = "OK";
@@ -30,8 +33,9 @@ class UDPServer {
 	private static boolean token = false;
 	private static LinkedList<String> queue = new LinkedList<>();
 	private static String sentence = "";
-	private static boolean primeiroErro = true;
-	private static boolean enviaDados = true;
+	private static boolean firstError = true;
+	private static boolean allowSendData = true;
+	private static int fileCount = 0;
 
 	public static void main(String args[]) throws Exception {
 
@@ -59,8 +63,9 @@ class UDPServer {
 
 		// Descomente para descobrir o proprio IP
 		InetAddress inetAddress = InetAddress.getLocalHost();
-		System.out.println("IP Address:- " + inetAddress.getHostAddress());
-		System.out.println("Host Name:- " + inetAddress.getHostName());
+		System.out.println("IP Address: " + inetAddress.getHostAddress());
+		System.out.println("Host Name: " + inetAddress.getHostName());
+		System.out.println("Server Name: " + nickname);
 
 		// Cria socket do servidor com a porta rcvPort
 		DatagramSocket serverSocket = new DatagramSocket(rcvPort);
@@ -73,26 +78,32 @@ class UDPServer {
 			if (token) {
 
 				// Buffer
-				byte[] sendData = new byte[BUFF_SIZE];
+				byte[] sendData;
 
 				// Se ha dados a enviar e eh permitido enviar
-				if (!queue.isEmpty() && enviaDados) {
+				if (!queue.isEmpty() && allowSendData) {
+					// Pega mensagem a enviar
 					sentence = queue.peekFirst();
 					sendData = sentence.getBytes();
-					enviaDados = false;
+
+					System.out.println("\nMensagem enviada:\n" + sentence + "\n");
+					
+					// Obriga a passar o token adiante
+					allowSendData = false;
 				}
 				// senao envia o token
 				else {
-					System.out.println("Token enviado!");
-
+					// Prepara TOKEN para enviar
 					sentence = TOKEN;
 					sendData = sentence.getBytes();
 
+					System.out.println("Token enviado!");
+					
 					// Nao possui mais o token
 					token = false;
 
 					// Quando receber o token, envia dados se houver
-					enviaDados = true;
+					allowSendData = true;
 				}
 
 				// cria pacote com o dado, o endereco do server e porta do servidor
@@ -125,7 +136,15 @@ class UDPServer {
 
 				// Mensagem recebida do Client
 				if (IPAddress.getHostAddress().equals(LOCALHOST)) {
-					queue.add(packetMsg);
+					// Se fila esta cheia descarta (ignora) a mensagem
+					if (queue.size() >= 10) {
+						System.out.println("\nMensagem descartada. Limite de 10 mensagens atingido.");
+					}
+					// Senao adiciona a mensagem na fila
+					else {
+						System.out.println("\nMensagem recebida do cliente:\n" + packetMsg + "\n");
+						queue.add(packetMsg);
+					}
 				}
 				// Mensagem de dados recebida da Rede
 				else if (packetMsg.startsWith(DATA)) {
@@ -145,7 +164,7 @@ class UDPServer {
 						// Se foi broadcast
 						if (TODOS.equals(destino)) {
 							System.out.println("\nBroadcast entrege com sucesso!");
-							primeiroErro = true;
+							firstError = true;
 							if (!queue.isEmpty())
 								queue.removeFirst();
 						}
@@ -153,36 +172,33 @@ class UDPServer {
 						// OK
 						else if (OK.equals(controleErro)) {
 							System.out.println("\nMensagem entregue ao destino com sucesso!");
-							primeiroErro = true;
+							firstError = true;
 							if (!queue.isEmpty())
 								queue.removeFirst();
 						}
 						// NAO_COPIADO
 						else if (NAO_COPIADO.equals(controleErro)) {
 							System.out.println("\nDestinatario nao encontrado!");
-							primeiroErro = true;
+							firstError = true;
 							if (!queue.isEmpty())
 								queue.removeFirst();
 						}
 						// ERRO
 						else if (ERRO.equals(controleErro)) {
 							// Se eh o primeiro erro, nao remove mensagem da fila
-							if (primeiroErro) {
+							if (firstError) {
 								System.out.println(
 										"Ocorreu um erro, a mesagem sera reenviada na proxima passagem do token!");
-								primeiroErro = false;
+								firstError = false;
 							}
 							// Senao, remove mensagem da fila para nao ser enviada novamente
 							else {
 								System.out.println("Ocorreu novamente um erro, a mesagem sera descartada!");
-								primeiroErro = true;
+								firstError = true;
 								if (!queue.isEmpty())
 									queue.removeFirst();
 							}
 						}
-
-						// Obriga a passar o token adiante
-						enviaDados = false;
 
 						// Tempo para acompanhar a execucao
 						Thread.sleep(sleepTime);
@@ -199,6 +215,15 @@ class UDPServer {
 
 							if (destino.equals(nickname)) {
 								controleErro = RAND.nextInt(100) < PERCENT_ERR ? ERRO : OK;
+							}
+
+							// Se foi recebido um arquivo e nao houve erros
+							if ("A".equals(tipoDado) && controleErro.equals(OK)) {
+								// Usa try-with-resource para gravar arquivo recebidoc
+								try (BufferedWriter writer = Files
+										.newBufferedWriter(Paths.get("ArquivoRecebido" + (++fileCount) + ".txt"))) {
+									writer.write(mensagem);
+								}
 							}
 						}
 
